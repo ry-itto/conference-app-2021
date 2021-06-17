@@ -80,6 +80,7 @@ var package = Package(
                 .target(name: "Repository"),
                 .target(name: "SettingFeature"),
                 .target(name: "Styleguide"),
+                .target(name: "DroidKaigiMPP"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]
         ),
