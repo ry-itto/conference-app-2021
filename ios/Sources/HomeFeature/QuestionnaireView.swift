@@ -49,5 +49,13 @@ public struct QuestionnaireView_Previews: PreviewProvider {
             .frame(width: 375, height: 100)
             .previewLayout(.sizeThatFits)
             .environment(\.colorScheme, .dark)
+        QuestionnaireView(tapAnswerAction: {})
+            .frame(width: 375, height: 100)
+            .previewLayout(.sizeThatFits)
+            .environment(\.colorScheme, .light)
+        QuestionnaireView(tapAnswerAction: {})
+            .frame(width: 375, height: 100)
+            .previewLayout(.sizeThatFits)
+            .environment(\.colorScheme, .dark)
     }
 }
