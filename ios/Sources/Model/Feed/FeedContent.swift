@@ -27,7 +27,8 @@ extension Array where Element == FeedContent {
 public extension FeedContent {
     static func blogMock(
         id: UUID = UUID(),
-        title: MultiLangText = .init(enTitle: "", jaTitle: "DroidKaigi 2020でのCodelabsについて")
+        title: String = "DroidKaigi 2020でのCodelabsについて",
+        isFavorited: Bool = false
     ) -> Self {
         .init(
             item: AnyFeedItem(
@@ -38,18 +39,20 @@ public extension FeedContent {
                     media: .medium,
                     publishedAt: Date(timeIntervalSince1970: 0),
                     summary: .init(enTitle: "", jaTitle: ""),
-                    title: title,
+                    title: .init(enTitle: title, jaTitle: title),
                     author: .init(link: "", name: ""),
                     language: ""
                 )
             ),
-            isFavorited: false
+            isFavorited: isFavorited
         )
     }
 
     static func podcastMock(
         id: UUID = UUID(),
-        title: MultiLangText = .init(enTitle: "", jaTitle: "2. Android 11 Talks")
+        title: String = "2. Android 11 Talks",
+        speakers: [Speaker] = [],
+        isFavorited: Bool = false
     ) -> Self {
         .init(
             item: AnyFeedItem(
@@ -60,18 +63,19 @@ public extension FeedContent {
                     media: .droidKaigiFm(isPlaying: false),
                     podcastLink: "",
                     publishedAt: Date(timeIntervalSince1970: 0),
-                    speakers: [],
+                    speakers: speakers,
                     summary: .init(enTitle: "", jaTitle: ""),
-                    title: title
+                    title: .init(enTitle: title, jaTitle: title)
                 )
             ),
-            isFavorited: false
+            isFavorited: isFavorited
         )
     }
 
     static func videoMock(
         id: UUID = UUID(),
-        title: MultiLangText = .init(enTitle: "", jaTitle: "DroidKaigi 2020 Lite - KotlinのDelegated Propertiesを活用してAndroidアプリ開発をもっと便利にする / chibatching [JA]")
+        title: String = "DroidKaigi 2020 Lite - KotlinのDelegated Propertiesを活用してAndroidアプリ開発をもっと便利にする / chibatching [JA]",
+        isFavorited: Bool = false
     ) -> Self {
         .init(
             item: AnyFeedItem(
@@ -82,10 +86,10 @@ public extension FeedContent {
                     media: .youtube,
                     publishedAt: Date(timeIntervalSince1970: 0),
                     summary: .init(enTitle: "", jaTitle: ""),
-                    title: .init(enTitle: "", jaTitle: "DroidKaigi 2020 Lite - KotlinのDelegated Propertiesを活用してAndroidアプリ開発をもっと便利にする / chibatching [JA]")
+                    title: .init(enTitle: title, jaTitle: title)
                 )
             ),
-            isFavorited: false
+            isFavorited: isFavorited
         )
     }
 }

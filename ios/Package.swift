@@ -27,6 +27,10 @@ var package = Package(
             targets: ["FavoritesFeature"]
         ),
         .library(
+            name: "Feed",
+            targets: ["Feed"]
+        ),
+        .library(
             name: "HomeFeature",
             targets: ["HomeFeature"]
         ),
@@ -118,9 +122,22 @@ var package = Package(
             name: "FavoritesFeature",
             dependencies: [
                 .target(name: "Component"),
+                .target(name: "Feed"),
                 .target(name: "Model"),
+                .target(name: "Player"),
                 .target(name: "Repository"),
                 .target(name: "Styleguide"),
+                .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+            ]
+        ),
+        .target(
+            name: "Feed",
+            dependencies: [
+                .target(name: "Component"),
+                .target(name: "Model"),
+                .target(name: "Player"),
+                .target(name: "Styleguide"),
+                .target(name: "Repository"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ]
         ),
@@ -128,6 +145,8 @@ var package = Package(
             name: "HomeFeature",
             dependencies: [
                 .target(name: "Component"),
+                .target(name: "Feed"),
+                .target(name: "Player"),
                 .target(name: "Repository"),
                 .target(name: "Styleguide"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
@@ -137,7 +156,9 @@ var package = Package(
             name: "MediaFeature",
             dependencies: [
                 .target(name: "Component"),
+                .target(name: "Feed"),
                 .target(name: "Model"),
+                .target(name: "Player"),
                 .target(name: "Repository"),
                 .target(name: "Styleguide"),
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),

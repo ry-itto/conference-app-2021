@@ -53,10 +53,6 @@ public struct AppTabScreen: View {
                         ),
                         then: SettingScreen.init(store:)
                     )
-                    IfLetStore(
-                        store.scope(state: \.webViewState).actionless,
-                        then: WebView.init(store:)
-                    )
                 }
             )
         }
@@ -97,7 +93,7 @@ private extension AppTab {
 
 private extension AppTabState {
     var isShowingSheet: Bool {
-        webViewState != nil || settingState != nil
+        settingState != nil
     }
 }
 
@@ -108,13 +104,13 @@ private extension AppTabState {
             AppTabScreen(
                 store: .init(
                     initialState: .init(
-                        feedContents: [
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock()
+                        feedItemStates: [
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
                         ]
                     ),
                     reducer: .empty,

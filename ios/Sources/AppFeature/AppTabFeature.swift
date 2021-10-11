@@ -1,5 +1,6 @@
 import Combine
 import Component
+import Feed
 import ComposableArchitecture
 import HomeFeature
 import MediaFeature
@@ -13,11 +14,11 @@ import TimetableFeature
 import Styleguide
 
 public struct AppTabState: Equatable {
-    public var feedContents: [FeedContent] {
+    public var feedItemStates: IdentifiedArrayOf<FeedItemState> {
         didSet {
-            homeState.feedContents = feedContents
-            mediaState.feedContents = feedContents
-            favoritesState.feedContents = feedContents.filter(\.isFavorited)
+            homeState.feedItemStates = feedItemStates
+            mediaState.listState.feedItemStates = feedItemStates
+            favoritesState.listState = .init(feedItemStates: feedItemStates.filter(\.feedContent.isFavorited))
         }
     }
     public var homeState: HomeState
@@ -26,15 +27,16 @@ public struct AppTabState: Equatable {
     public var favoritesState: FavoritesState
     public var aboutState: AboutState
     public var settingState: SettingState?
-    public var webViewState: WebViewState?
 
     public init(
-        feedContents: [FeedContent]
+        feedItemStates: IdentifiedArrayOf<FeedItemState>
     ) {
-        self.feedContents = feedContents
-        self.homeState = HomeState(feedContents: feedContents)
-        self.mediaState = MediaState(feedContents: feedContents)
-        self.favoritesState = FavoritesState(feedContents: feedContents.filter(\.isFavorited))
+        self.feedItemStates = feedItemStates
+        self.homeState = HomeState(feedItemStates: feedItemStates)
+        self.mediaState = MediaState(listState: .init(feedItemStates: feedItemStates))
+        self.favoritesState = FavoritesState(
+            listState: .init(feedItemStates: feedItemStates.filter(\.feedContent.isFavorited))
+        )
         self.aboutState = AboutState()
         self.timetableState = TimetableState()
     }
@@ -42,54 +44,26 @@ public struct AppTabState: Equatable {
 
 public enum AppTabAction {
     case reload
-    case tap(FeedContent)
     case hideSheet
-    case tapFavorite(isFavorited: Bool, id: String)
-    case tapPlay(FeedContent)
-    case favoriteResponse(Result<String, KotlinError>)
     case answerQuestionnaire
+    case home(HomeAction)
     case timetable(TimetableAction)
     case media(MediaAction)
+    case favorite(FavoritesAction)
     case about(AboutAction)
     case showSetting
     case setting(SettingAction)
-    case none
-
-    init(action: HomeAction) {
-        switch action {
-        case .tap(let feedContent):
-            self = .tap(feedContent)
-        case .tapFavorite(let isFavorited, let id):
-            self = .tapFavorite(isFavorited: isFavorited, id: id)
-        case .tapPlay(let feedContent):
-            self = .tapPlay(feedContent)
-        case .answerQuestionnaire:
-            self = .none
-        case .showSetting:
-            self = .showSetting
-        }
-    }
-
-    init(action: FavoritesAction) {
-        switch action {
-        case .tap(let feedContent):
-            self = .tap(feedContent)
-        case .tapFavorite(let isFavorited, let id):
-            self = .tapFavorite(isFavorited: isFavorited, id: id)
-        case .tapPlay(let feedContent):
-            self = .tapPlay(feedContent)
-        case .showSetting:
-            self = .showSetting
-        }
-    }
 }
 
 public let appTabReducer = Reducer<AppTabState, AppTabAction, AppEnvironment>.combine(
     homeReducer.pullback(
         state: \.homeState,
-        action: /AppTabAction.init(action:),
-        environment: { _ in
-            .init()
+        action: /AppTabAction.home,
+        environment: { environment in
+            .init(
+                feedRepository: environment.feedRepository,
+                player: environment.player
+            )
         }
     ),
     timetableReducer.pullback(
@@ -104,15 +78,21 @@ public let appTabReducer = Reducer<AppTabState, AppTabAction, AppEnvironment>.co
     mediaReducer.pullback(
         state: \.mediaState,
         action: /AppTabAction.media,
-        environment: { _ in
-            .init()
+        environment: { environment in
+            .init(
+                feedRepository: environment.feedRepository,
+                player: environment.player
+            )
         }
     ),
     favoritesReducer.pullback(
         state: \.favoritesState,
-        action: /AppTabAction.init(action:),
-        environment: { _ in
-            .init()
+        action: /AppTabAction.favorite,
+        environment: { environment in
+            .init(
+                feedRepository: environment.feedRepository,
+                player: environment.player
+            )
         }
     ),
     settingReducer.optional().pullback(
@@ -137,54 +117,42 @@ public let appTabReducer = Reducer<AppTabState, AppTabAction, AppEnvironment>.co
         switch action {
         case .reload:
             return .none
-        case .tap(let feedContent), .media(.tap(let feedContent)):
-            state.webViewState = URL(string: feedContent.item.link).map(WebViewState.init(url:))
-            return .none
         case .hideSheet:
-            state.webViewState = nil
             state.settingState = nil
             return .none
         case .answerQuestionnaire:
             return .none
-        case .tapFavorite(let isFavorited, let id), .media(.tapFavorite(let isFavorited, let id)):
-            let publisher = isFavorited
-                ? environment.feedRepository.removeFavorite(id: id)
-                : environment.feedRepository.addFavorite(id: id)
-            return publisher
-                .map { id }
-                .receive(on: DispatchQueue.main)
-                .catchToEffect()
-                .map(AppTabAction.favoriteResponse)
-        case let .tapPlay(content):
-            if let podcast = content.item.wrappedValue as? Podcast, let index = state.feedContents.map(\.id).firstIndex(of: content.id) {
-                if environment.player.isPlaying {
-                    environment.player.stop()
-                    state.feedContents[index].item.wrappedValue.media = .droidKaigiFm(isPlaying: false)
-                } else {
-                    environment.player.setUpPlayer(url: URL(string: podcast.podcastLink)!)
-                    if let playingIndex = state.feedContents.firstIndex(where: {
-                        $0.item.media == .droidKaigiFm(isPlaying: true)
-                    }) {
-                        state.feedContents[playingIndex].item.wrappedValue.media = .droidKaigiFm(isPlaying: false)
-                    }
-                    state.feedContents[index].item.wrappedValue.media = .droidKaigiFm(isPlaying: true)
+        case .home(.feedItem(id: _, action: .play)),
+                .media(.feedList(.feedItem(id: _, action: .play))),
+                .favorite(.feedList(.feedItem(id: _, action: .play))):
+            if environment.player.isPlaying {
+                environment.player.stop()
+                if let playingIndex = state.feedItemStates.firstIndex(where: {
+                    $0.feedContent.item.wrappedValue.media == .droidKaigiFm(isPlaying: true)
+                }) {
+                    var feedItemState = state.feedItemStates[playingIndex]
+                    feedItemState.feedContent.item.wrappedValue.media = .droidKaigiFm(isPlaying: false)
+                    state.feedItemStates.update(feedItemState, at: playingIndex)
                 }
             }
             return .none
-        case let .favoriteResponse(.success(id)):
-            if let index = state.feedContents.map(\.id).firstIndex(of: id) {
-                state.feedContents[index].isFavorited.toggle()
+        case .home(.feedItem(id: let id, action: .favoriteResponse(.success))),
+                .media(.feedList(.feedItem(id: let id, action: .favoriteResponse(.success)))),
+                .favorite(.feedList(.feedItem(id: let id, action: .favoriteResponse(.success)))):
+            if let index = state.feedItemStates.map(\.id).firstIndex(of: id) {
+                var feedItemState = state.feedItemStates[index]
+                feedItemState.feedContent.isFavorited.toggle()
+                state.feedItemStates.update(feedItemState, at: index)
             }
             return .none
-        case let .favoriteResponse(.failure(error)):
-            print(error.localizedDescription)
+        case .home:
             return .none
         case .showSetting, .media(.showSetting), .timetable(.loaded(.showSetting)):
             state.settingState = SettingState()
             return .none
-        case .none:
-            return .none
         case .media:
+            return .none
+        case .favorite:
             return .none
         case .about:
             return .none

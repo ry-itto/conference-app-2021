@@ -3,6 +3,7 @@ import Combine
 import Component
 import ComposableArchitecture
 import FavoritesFeature
+import Feed
 import HomeFeature
 import MediaFeature
 import Model
@@ -48,7 +49,9 @@ public let appReducer = Reducer<AppState, AppAction, AppEnvironment>.combine(
             state = .needToInitialize
             return .none
         case let .refreshResponse(.success((feedContents))):
-            state = .initialized(.init(feedContents: feedContents))
+            state = .initialized(.init(
+                feedItemStates: IdentifiedArray(uncheckedUniqueElements: feedContents.map(FeedItemState.init(feedContent:)), id: \.id))
+            )
             return .none
         case let .refreshResponse(.failure(error)):
             state = .errorOccurred
@@ -64,4 +67,4 @@ public let appReducer = Reducer<AppState, AppAction, AppEnvironment>.combine(
             return .none
         }
     }
-)
+).debug()

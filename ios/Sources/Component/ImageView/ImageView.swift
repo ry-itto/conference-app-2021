@@ -7,7 +7,7 @@ public enum PlaceHolder {
     case noImage
     case noImagePodcast
 
-    var image: SwiftUI.Image {
+    public var image: SwiftUI.Image {
         switch self {
         case .noImage:
             return AssetImage.noImage.image
@@ -21,7 +21,7 @@ public enum PlaceHolder {
         case medium
         case large
 
-        var frame: CGSize {
+        public var frame: CGSize {
             switch self {
             case .small:
                 return .init(width: 50, height: 50)
@@ -35,8 +35,8 @@ public enum PlaceHolder {
 }
 
 public struct ImageView: View {
-    enum Const {
-        static let roundedLineWidth: CGFloat = 1
+    public enum Const {
+        public static let roundedLineWidth: CGFloat = 1
     }
 
     private let imageURL: URL?

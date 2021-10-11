@@ -70,13 +70,13 @@ public struct AppScreen: View {
                 store: .init(
                     initialState: .initialized(
                         .init(
-                            feedContents: [
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock()
+                            feedItemStates: [
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
                             ]
                         )
                     ),

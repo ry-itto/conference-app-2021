@@ -9,7 +9,7 @@ struct DroidKaigiApp: App {
                 store: .init(
                     initialState: .init(),
                     reducer: appReducer,
-                    environment: .shared
+                    environment: .noop
                 )
             )
         }

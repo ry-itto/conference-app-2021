@@ -1,4 +1,5 @@
 import Component
+import Feed
 import ComposableArchitecture
 import Model
 import Repository
@@ -18,39 +19,25 @@ public struct HomeScreen: View {
                 WithViewStore(store) { viewStore in
                     VStack(alignment: .trailing, spacing: 0) {
                         Spacer(minLength: 16)
-                        if let topic = viewStore.topic {
-                            LargeCard(
-                                content: topic,
-                                tapAction: {
-                                    viewStore.send(.tap(topic))
-                                },
-                                tapFavoriteAction: {
-                                    viewStore.send(.tapFavorite(isFavorited: topic.isFavorited, id: topic.id))
-                                },
-                                tapPlayAction: {
-                                    viewStore.send(.tapPlay(topic))
-                                }
-                            )
-                        }
+                        IfLetStore(
+                            store.scope(
+                                state: \.topic,
+                                action: HomeAction.topic(action:)
+                            ),
+                            then: LargeCard.init(store:)
+                        )
                         Separator()
                         QuestionnaireView(tapAnswerAction: {
                             viewStore.send(.answerQuestionnaire)
                         })
                         Separator()
-                        ForEach(viewStore.listFeedContents) { feedContent in
-                            ListItem(
-                                content: feedContent,
-                                tapAction: {
-                                    viewStore.send(.tap(feedContent))
-                                },
-                                tapFavoriteAction: {
-                                    viewStore.send(.tapFavorite(isFavorited: feedContent.isFavorited, id: feedContent.id))
-                                },
-                                tapPlayAction: {
-                                    viewStore.send(.tapPlay(feedContent))
-                                }
-                            )
-                        }
+                        ForEachStore(
+                            store.scope(
+                                state: \.listFeedItemStates,
+                                action: HomeAction.feedItem(id:action:)
+                            ),
+                            content: ListItem.init(store:)
+                        )
                     }
                     .separatorStyle(ThickSeparatorStyle())
                 }
@@ -75,48 +62,6 @@ public struct HomeScreen: View {
     }
 }
 
-private extension LargeCard {
-    init(
-        content: FeedContent,
-        tapAction: @escaping () -> Void,
-        tapFavoriteAction: @escaping () -> Void,
-        tapPlayAction: @escaping () -> Void
-    ) {
-        self.init(
-            title: content.item.title.get(by: Foundation.Locale.current.language),
-            imageURL: URL(string: content.item.image.largeURLString),
-            media: content.item.media,
-            date: content.item.publishedAt,
-            isFavorited: content.isFavorited,
-            tapAction: tapAction,
-            tapFavoriteAction: tapFavoriteAction,
-            tapPlayAction: tapPlayAction
-        )
-    }
-}
-
-private extension ListItem {
-    init(
-        content: FeedContent,
-        tapAction: @escaping () -> Void,
-        tapFavoriteAction: @escaping () -> Void,
-        tapPlayAction: @escaping () -> Void
-    ) {
-        let speakers = (content.item.wrappedValue as? Podcast)?.speakers ?? []
-        self.init(
-            title: content.item.title.get(by: Foundation.Locale.current.language),
-            media: content.item.media,
-            imageURL: URL(string: content.item.image.smallURLString),
-            speakers: speakers,
-            date: content.item.publishedAt,
-            isFavorited: content.isFavorited,
-            tapFavoriteAction: tapFavoriteAction,
-            tapAction: tapAction,
-            tapPlayAction: tapPlayAction
-        )
-    }
-}
-
 #if DEBUG
 public struct HomeScreen_Previews: PreviewProvider {
     public static var previews: some View {
@@ -124,13 +69,13 @@ public struct HomeScreen_Previews: PreviewProvider {
             HomeScreen(
                 store: .init(
                     initialState: .init(
-                        feedContents: [
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock()
+                        feedItemStates: [
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
+                            .init(feedContent: .blogMock()),
                         ]
                     ),
                     reducer: .empty,

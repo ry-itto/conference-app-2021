@@ -1,22 +1,22 @@
 import Component
+import Feed
 import ComposableArchitecture
 import Model
 import SwiftUI
 import Styleguide
+import IdentifiedCollections
 
 public struct MediaSectionView: View {
     let type: MediaType
     let store: Store<ViewState, ViewAction>
 
     struct ViewState: Equatable {
-        let contents: [FeedContent]
+        var feedItemStates: IdentifiedArrayOf<FeedItemState>
     }
 
     enum ViewAction {
-        case showMore
-        case tap(FeedContent)
-        case tapFavorite(isFavorited: Bool, id: String)
-        case tapPlay(FeedContent)
+        case feedItem(id: FeedContent.ID, content: FeedItemAction)
+        case showMore(MediaType)
     }
 
     public var body: some View {
@@ -24,48 +24,21 @@ public struct MediaSectionView: View {
             WithViewStore(store) { viewStore in
                 MediaSectionHeader(
                     type: type,
-                    moreAction: { viewStore.send(.showMore) }
+                    moreAction: { viewStore.send(.showMore(type)) }
                 )
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: .zero) {
-                        ForEach(viewStore.contents) { content in
-                            MediumCard(
-                                content: content,
-                                tapAction: {
-                                    viewStore.send(.tap(content))
-                                },
-                                tapFavoriteAction: {
-                                    viewStore.send(.tapFavorite(isFavorited: content.isFavorited, id: content.id))
-                                },
-                                tapPlayAction: {
-                                    viewStore.send(.tapPlay(content))
-                                }
-                            )
-                        }
+                        ForEachStore(
+                            store.scope(
+                                state: \.feedItemStates,
+                                action: ViewAction.feedItem(id:content:)
+                            ),
+                            content: MediumCard.init(store:)
+                        )
                     }
                 }
             }
         }
-    }
-}
-
-private extension MediumCard {
-    init(
-        content: FeedContent,
-        tapAction: @escaping () -> Void,
-        tapFavoriteAction: @escaping () -> Void,
-        tapPlayAction: @escaping () -> Void
-    ) {
-        self.init(
-            title: content.item.title.get(by: Foundation.Locale.current.language),
-            imageURL: URL(string: content.item.image.largeURLString),
-            media: content.item.media,
-            date: content.item.publishedAt,
-            isFavorited: content.isFavorited,
-            tapAction: tapAction,
-            tapFavoriteAction: tapFavoriteAction,
-            tapPlayAction: tapPlayAction
-        )
     }
 }
 
@@ -82,13 +55,13 @@ public struct MediaSectionView_Previews: PreviewProvider {
                     type: .blog,
                     store: .init(
                         initialState: MediaSectionView.ViewState(
-                            contents: [
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock()
+                            feedItemStates: [
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
                             ]
                         ),
                         reducer: .empty,

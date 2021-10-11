@@ -1,5 +1,6 @@
 import Component
 import ComposableArchitecture
+import Feed
 import Introspect
 import Model
 import SwiftUI
@@ -7,13 +8,13 @@ import Styleguide
 
 public struct MediaScreen: View {
     private let store: Store<MediaState, MediaAction>
-    @ObservedObject private var viewStore: ViewStore<ViewState, MediaAction>
+//    @ObservedObject private var viewStore: ViewStore<ViewState, MediaAction>
     @SearchController private var searchController: UISearchController
 
     public init(store: Store<MediaState, MediaAction>) {
         self.store = store
-        let viewStore = ViewStore(store.scope(state: ViewState.init(state:)))
-        self.viewStore = viewStore
+        let viewStore = ViewStore(store)
+//        self.viewStore = viewStore
         self._searchController = .init(
             searchBarPlaceHolder: L10n.MediaScreen.SearchBar.placeholder,
             searchTextDidChangeTo: { text in
@@ -30,77 +31,71 @@ public struct MediaScreen: View {
     }
 
     struct ViewState: Equatable {
-        var isSearchTextEditing: Bool
         var isMoreActive: Bool
 
         init(state: MediaState) {
-            isSearchTextEditing = state.isSearchTextEditing
             isMoreActive = state.moreActiveType != nil
         }
     }
 
     public var body: some View {
-        NavigationView {
-            ZStack {
-                AssetColor.Background.primary.color.ignoresSafeArea()
-                    .zIndex(0)
+        WithViewStore(store.scope(state: ViewState.init(state:))) { viewStore in
+            NavigationView {
+                ZStack {
+                    AssetColor.Background.primary.color.ignoresSafeArea()
+                        .zIndex(0)
 
-                MediaListView(store: store)
-                    .zIndex(1)
+                    MediaListView(store: store)
+                        .zIndex(1)
 
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                    .opacity(viewStore.isSearchTextEditing ? 1 : .zero)
-                    .zIndex(2)
+//                    Color.black.opacity(0.4)
+//                        .ignoresSafeArea()
+//                        .opacity(viewStore.isSearchTextEditing ? 1 : .zero)
+//                        .zIndex(2)
 
-                IfLetStore(
-                    store.scope(
-                        state: { state in
-                            state.searchedFeedContents.map {
-                                SearchResultScreen.ViewState(
-                                    contents: $0
-                                )
-                            }
-                        },
-                        action: MediaAction.init(action:)
-                    ),
-                    then: SearchResultScreen.init(store:)
-                )
-                .zIndex(3)
-            }
-            .background(
-                NavigationLink(
-                    destination: IfLetStore(
+                    IfLetStore(
                         store.scope(
-                            state: MediaDetailScreen.ViewState.init(state:),
-                            action: MediaAction.init(action:)
+                            state: \.searchedFeedListState,
+                            action: MediaAction.feedList
                         ),
-                        then: MediaDetailScreen.init(store:)
-                    ),
-                    isActive: viewStore.binding(
-                        get: \.isMoreActive,
-                        send: { _ in .moreDismissed }
+                        then: SearchResultScreen.init(store:)
                     )
-                ) {
-                    EmptyView()
+                    .zIndex(3)
                 }
-            )
-            .navigationTitle(L10n.MediaScreen.title)
-            .navigationBarItems(
-                trailing: Button(action: {
-                    viewStore.send(.showSetting)
-                }, label: {
-                    AssetImage.iconSetting.image
-                        .renderingMode(.template)
-                        .foregroundColor(AssetColor.Base.primary.color)
-                })
-            )
-            .introspectViewController { viewController in
-                guard viewController.navigationItem.searchController == nil else { return }
-                viewController.navigationItem.searchController = searchController
-                viewController.navigationItem.hidesSearchBarWhenScrolling = false
-                // To keep the navigation bar expanded
-                viewController.navigationController?.navigationBar.sizeToFit()
+                .background(
+                    NavigationLink(
+                        destination: IfLetStore(
+                            store.scope(
+                                state: \.detailState,
+                                action: MediaAction.feedList
+                            ),
+                            then: MediaDetailScreen.init(store:)
+                        ),
+                        isActive: viewStore.binding(
+                            get: \.isMoreActive,
+                            send: { _ in .moreDismissed }
+                        )
+                    ) {
+                        EmptyView()
+                    }
+                )
+                .navigationTitle(L10n.MediaScreen.title)
+                .navigationBarItems(
+                    trailing: Button(action: {
+                        viewStore.send(.showSetting)
+                    }, label: {
+                        AssetImage.iconSetting.image
+                            .renderingMode(.template)
+                            .foregroundColor(AssetColor.Base.primary.color)
+                    })
+                )
+                .introspectViewController { viewController in
+                    guard viewController.navigationItem.searchController == nil else { return }
+                    viewController.navigationItem.searchController = searchController
+                    viewController.navigationItem.hidesSearchBarWhenScrolling = false
+                    // To keep the navigation bar expanded
+                    viewController.navigationController?.navigationBar.sizeToFit()
+                }
             }
         }
     }
@@ -108,47 +103,6 @@ public struct MediaScreen: View {
     private var separator: some View {
         Separator()
             .padding()
-    }
-}
-
-private extension MediaAction {
-    init(action: MediaDetailScreen.ViewAction) {
-        switch action {
-        case .tap(let content):
-            self = .tap(content)
-        case .tapFavorite(let isFavorited, let contentId):
-            self = .tapFavorite(isFavorited: isFavorited, id: contentId)
-        case .tapPlay(let content):
-            self = .tapPlay(content)
-        }
-    }
-
-    init(action: SearchResultScreen.ViewAction) {
-        switch action {
-        case .tap(let content):
-            self = .tap(content)
-        case .tapFavorite(let isFavorited, let contentId):
-            self = .tapFavorite(isFavorited: isFavorited, id: contentId)
-        case .tapPlay(let content):
-            self = .tapPlay(content)
-        }
-    }
-}
-
-private extension MediaDetailScreen.ViewState {
-    init?(state: MediaState) {
-        guard let moreActiveType = state.moreActiveType else { return nil }
-        switch moreActiveType {
-        case .blog:
-            title = L10n.MediaScreen.Section.Blog.title
-            contents = state.blogs
-        case .video:
-            title = L10n.MediaScreen.Section.Video.title
-            contents = state.videos
-        case .podcast:
-            title = L10n.MediaScreen.Section.Podcast.title
-            contents = state.podcasts
-        }
     }
 }
 
@@ -160,17 +114,22 @@ public struct MediaScreen_Previews: PreviewProvider {
                 MediaScreen(
                     store: .init(
                         initialState: .init(
-                            feedContents: [
-                                .blogMock(),
-                                .blogMock(),
-                                .blogMock(),
-                                .videoMock(),
-                                .videoMock(),
-                                .videoMock(),
-                                .podcastMock(),
-                                .podcastMock(),
-                                .podcastMock()
-                            ]
+                            listState: .init(
+                                feedItemStates: .init(
+                                    uniqueElements: [
+                                        .init(feedContent: .blogMock()),
+                                        .init(feedContent: .blogMock()),
+                                        .init(feedContent: .blogMock()),
+                                        .init(feedContent: .videoMock()),
+                                        .init(feedContent: .videoMock()),
+                                        .init(feedContent: .videoMock()),
+                                        .init(feedContent: .podcastMock()),
+                                        .init(feedContent: .podcastMock()),
+                                        .init(feedContent: .podcastMock()),
+                                    ],
+                                    id: \.id
+                                )
+                            )
                         ),
                         reducer: .empty,
                         environment: {}
@@ -182,27 +141,19 @@ public struct MediaScreen_Previews: PreviewProvider {
                 MediaScreen(
                     store: .init(
                         initialState: .init(
-                            feedContents: [
-                                .blogMock(
-                                    title: .init(enTitle: "", jaTitle: "ForSearch")
-                                ),
-                                .blogMock(
-                                    title: .init(enTitle: "", jaTitle: "ForSearch")
-                                ),
-                                .blogMock(
-                                    title: .init(enTitle: "", jaTitle: "ForSearch")
-                                ),
-                                .videoMock(
-                                    title: .init(enTitle: "", jaTitle: "ForSearch")
-                                ),
-                                .videoMock(
-                                    title: .init(enTitle: "", jaTitle: "ForSearch")
-                                ),
-                                .videoMock(),
-                                .podcastMock(),
-                                .podcastMock(),
-                                .podcastMock()
-                            ],
+                            listState: .init(
+                                feedItemStates: [
+                                    .init(feedContent: .blogMock(title: "ForSearch")),
+                                    .init(feedContent: .blogMock(title: "ForSearch")),
+                                    .init(feedContent: .blogMock(title: "ForSearch")),
+                                    .init(feedContent: .videoMock(title: "ForSearch")),
+                                    .init(feedContent: .videoMock(title: "ForSearch")),
+                                    .init(feedContent: .videoMock()),
+                                    .init(feedContent: .podcastMock()),
+                                    .init(feedContent: .podcastMock()),
+                                    .init(feedContent: .podcastMock()),
+                                ]
+                            ),
                             searchText: "Search",
                             isSearchTextEditing: true
                         ),

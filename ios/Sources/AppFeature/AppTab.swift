@@ -21,9 +21,7 @@ enum AppTab: CaseIterable {
             HomeScreen(
                 store: store.scope(
                     state: \.homeState,
-                    action: { (action: HomeAction) in
-                        AppTabAction.init(action: action)
-                    }
+                    action: AppTabAction.home
                 )
             )
         case .timetable:
@@ -44,9 +42,7 @@ enum AppTab: CaseIterable {
             FavoritesScreen(
                 store: store.scope(
                     state: \.favoritesState,
-                    action: { (action: FavoritesAction) in
-                        AppTabAction.init(action: action)
-                    }
+                    action: AppTabAction.favorite
                 )
             )
         case .about:

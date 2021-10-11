@@ -1,5 +1,5 @@
 import ComposableArchitecture
-import Component
+import Feed
 import Introspect
 import Repository
 import Model
@@ -18,21 +18,15 @@ public struct FavoritesScreen: View {
             ZStack {
                 AssetColor.Background.primary.color.ignoresSafeArea()
                 WithViewStore(store) { viewStore in
-                    if viewStore.feedContents.isEmpty {
+                    if viewStore.listState.feedItemStates.isEmpty {
                         FavoritesEmptyView()
                     } else {
                         ScrollView {
                             FeedContentListView(
-                                feedContents: viewStore.feedContents,
-                                tapContent: { content in
-                                    viewStore.send(.tap(content))
-                                },
-                                tapFavorite: { isFavorited, contentId in
-                                    viewStore.send(.tapFavorite(isFavorited: isFavorited, id: contentId))
-                                },
-                                tapPlay: { content in
-                                    viewStore.send(.tapPlay(content))
-                                }
+                                store: store.scope(
+                                    state: \.listState,
+                                    action: FavoritesAction.feedList
+                                )
                             )
                         }
                     }
@@ -59,7 +53,7 @@ public struct FavoritesScreen: View {
             FavoritesScreen(
                 store: .init(
                     initialState: .init(
-                        feedContents: []
+                        listState: .init(feedItemStates: .init())
                     ),
                     reducer: .empty,
                     environment: {}
@@ -71,14 +65,19 @@ public struct FavoritesScreen: View {
             FavoritesScreen(
                 store: .init(
                     initialState: .init(
-                        feedContents: [
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock(),
-                            .blogMock()
-                        ]
+                        listState: .init(
+                            feedItemStates: .init(
+                                uniqueElements: [
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .blogMock()),
+                                ],
+                                id: \.id
+                            )
+                        )
                     ),
                     reducer: .empty,
                     environment: {}

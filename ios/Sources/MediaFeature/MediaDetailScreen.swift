@@ -1,37 +1,44 @@
 import Component
+import Feed
 import ComposableArchitecture
 import Model
 import Styleguide
 import SwiftUI
 
-public struct MediaDetailScreen: View {
-    let store: Store<ViewState, ViewAction>
+public struct MediaDetailState: Equatable {
+    public var title: String
+    public var listState: FeedContentListState
 
-    struct ViewState: Equatable {
-        var title: String
-        var contents: [FeedContent]
+    public init(
+        title: String,
+        listState: FeedContentListState
+    ) {
+        self.title = title
+        self.listState = listState
     }
+}
 
-    enum ViewAction {
-        case tap(FeedContent)
-        case tapFavorite(isFavorited: Bool, id: String)
-        case tapPlay(FeedContent)
+public let mediaDetailReducer = Reducer<MediaDetailState, FeedContentListAction, Void> { _, action, _ in
+    switch action {
+    case .feedItem:
+        return .none
+    }
+}
+
+public struct MediaDetailScreen: View {
+    private let store: Store<MediaDetailState, FeedContentListAction>
+
+    public init(
+        store: Store<MediaDetailState, FeedContentListAction>
+    ) {
+        self.store = store
     }
 
     public var body: some View {
         WithViewStore(store) { viewStore in
             ScrollView {
                 FeedContentListView(
-                    feedContents: viewStore.contents,
-                    tapContent: { content in
-                        viewStore.send(.tap(content))
-                    },
-                    tapFavorite: { isFavorited, contentId in
-                        viewStore.send(.tapFavorite(isFavorited: isFavorited, id: contentId))
-                    },
-                    tapPlay: { content in
-                        viewStore.send(.tapPlay(content))
-                    }
+                    store: store.scope(state: \.listState)
                 )
             }
             .background(AssetColor.Background.primary.color.ignoresSafeArea())
@@ -45,16 +52,21 @@ public struct MediaDetailScreen_Previews: PreviewProvider {
     public static var previews: some View {
         MediaDetailScreen(
             store: .init(
-                initialState: .init(
+                initialState: MediaDetailState(
                     title: "BLOG",
-                    contents: [
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock()
-                    ]
+                    listState: .init(
+                        feedItemStates: .init(
+                            uniqueElements: [
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                            ],
+                            id: \.id
+                        )
+                    )
                 ),
                 reducer: .empty,
                 environment: {}
@@ -65,16 +77,21 @@ public struct MediaDetailScreen_Previews: PreviewProvider {
 
         MediaDetailScreen(
             store: .init(
-                initialState: .init(
+                initialState: MediaDetailState(
                     title: "BLOG",
-                    contents: [
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock(),
-                        .blogMock()
-                    ]
+                    listState: .init(
+                        feedItemStates: .init(
+                            uniqueElements: [
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                                .init(feedContent: .blogMock()),
+                            ],
+                            id: \.id
+                        )
+                    )
                 ),
                 reducer: .empty,
                 environment: {}

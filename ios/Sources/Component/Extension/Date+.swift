@@ -1,6 +1,6 @@
 import Foundation
 
-extension Date {
+public extension Date {
     var formatted: String {
         let formatter = DateFormatter.shared
         formatter.dateStyle = .medium

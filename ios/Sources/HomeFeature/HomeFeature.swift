@@ -1,47 +1,71 @@
 import Component
+import Feed
 import ComposableArchitecture
 import Model
+import Player
 import Repository
+import IdentifiedCollections
 
 public struct HomeState: Equatable {
-    public var feedContents: [FeedContent]
+    public var feedItemStates: IdentifiedArrayOf<FeedItemState>
 
-    var topic: FeedContent? {
-        feedContents.first
+    var topic: FeedItemState? {
+        feedItemStates.first
     }
 
-    var listFeedContents: [FeedContent] {
-        Array(feedContents.dropFirst())
+    var listFeedItemStates: IdentifiedArrayOf<FeedItemState> {
+        IdentifiedArray(feedItemStates.dropFirst())
     }
 
-    public init(feedContents: [FeedContent]) {
-        self.feedContents = feedContents
+    public init(feedItemStates: IdentifiedArrayOf<FeedItemState>) {
+        self.feedItemStates = feedItemStates
     }
 }
 
 public enum HomeAction {
-    case tap(FeedContent)
-    case tapFavorite(isFavorited: Bool, id: String)
-    case tapPlay(FeedContent)
+    case topic(action: FeedItemAction)
+    case feedItem(id: FeedContent.ID, action: FeedItemAction)
     case answerQuestionnaire
     case showSetting
 }
 
 public struct HomeEnvironment {
-    public init() {}
-}
+    public let feedRepository: FeedRepositoryProtocol
+    public let player: PlayerProtocol
 
-public let homeReducer = Reducer<HomeState, HomeAction, HomeEnvironment> { _, action, _ in
-    switch action {
-    case .tap:
-        return .none
-    case .tapFavorite(let isFavorited, let id):
-        return .none
-    case .tapPlay:
-        return .none
-    case .answerQuestionnaire:
-        return .none
-    case .showSetting:
-        return .none
+    public init(
+        feedRepository: FeedRepositoryProtocol,
+        player: PlayerProtocol
+    ) {
+        self.feedRepository = feedRepository
+        self.player = player
     }
 }
+
+public let homeReducer = Reducer<HomeState, HomeAction, HomeEnvironment>.combine(
+    feedItemReducer.forEach(
+        state: \.feedItemStates,
+        action: /HomeAction.feedItem(id:action:),
+        environment: { environment in
+            FeedItemEnvironment(
+                feedRepository: environment.feedRepository,
+                player: environment.player
+            )
+        }
+    ),
+    .init { state, action, _ in
+        switch action {
+        case let .topic(action):
+            if let id = state.topic?.id {
+                return .init(value: .feedItem(id: id, action: action))
+            }
+            return .none
+        case .feedItem:
+            return .none
+        case .answerQuestionnaire:
+            return .none
+        case .showSetting:
+            return .none
+        }
+    }
+)

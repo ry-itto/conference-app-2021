@@ -7,11 +7,13 @@ import SwiftUI
 struct MediaListView: View {
 
     private let store: Store<MediaState, MediaAction>
-    @ObservedObject private var viewStore: ViewStore<ViewState, ViewAction>
+    @ObservedObject private var viewStore: ViewStore<ViewState, Never>
 
     init(store: Store<MediaState, MediaAction>) {
         self.store = store
-        self.viewStore = .init(store.scope(state: ViewState.init(state:), action: MediaAction.init(action:)))
+        self.viewStore = .init(
+            store.scope(state: ViewState.init(state:)).actionless
+        )
     }
 
     struct ViewState: Equatable {
@@ -20,16 +22,10 @@ struct MediaListView: View {
         var hasPodcasts: Bool
 
         init(state: MediaState) {
-            hasBlogs = state.feedContents.contains { $0.item.wrappedValue is Blog }
-            hasVideos = state.feedContents.contains { $0.item.wrappedValue is Video }
-            hasPodcasts = state.feedContents.contains { $0.item.wrappedValue is Podcast }
+            hasBlogs = !state.blogs.isEmpty
+            hasVideos = !state.videos.isEmpty
+            hasPodcasts = !state.podcasts.isEmpty
         }
-    }
-
-    enum ViewAction {
-        case moreDismissed
-        case tap(FeedContent)
-        case tapFavorite(isFavorited: Bool, id: String)
     }
 
     var body: some View {
@@ -38,8 +34,8 @@ struct MediaListView: View {
                 MediaSectionView(
                     type: .blog,
                     store: store.scope(
-                        state: { .init(contents: $0.blogs) },
-                        action: { .init(action: $0, for: .blog) }
+                        state: { .init(feedItemStates: $0.blogs) },
+                        action: { .init(action: $0) }
                     )
                 )
                 separator
@@ -48,8 +44,8 @@ struct MediaListView: View {
                 MediaSectionView(
                     type: .video,
                     store: store.scope(
-                        state: { .init(contents: $0.videos) },
-                        action: { .init(action: $0, for: .video) }
+                        state: { .init(feedItemStates: $0.videos) },
+                        action: { .init(action: $0) }
                     )
                 )
                 separator
@@ -58,8 +54,8 @@ struct MediaListView: View {
                 MediaSectionView(
                     type: .podcast,
                     store: store.scope(
-                        state: { .init(contents: $0.podcasts) },
-                        action: { .init(action: $0, for: .podcast) }
+                        state: { .init(feedItemStates: $0.podcasts) },
+                        action: { .init(action: $0) }
                     )
                 )
             }
@@ -74,29 +70,12 @@ struct MediaListView: View {
 }
 
 private extension MediaAction {
-    init(action: MediaListView.ViewAction) {
+    init(action: MediaSectionView.ViewAction) {
         switch action {
-        case .moreDismissed:
-            self = .moreDismissed
-        case .tap(let feedContent):
-            self = .tap(feedContent)
-        case .tapFavorite(let isFavorited, let id):
-            self = .tapFavorite(isFavorited: isFavorited, id: id)
-        }
-    }
-}
-
-private extension MediaAction {
-    init(action: MediaSectionView.ViewAction, for mediaType: MediaType) {
-        switch action {
-        case .showMore:
-            self = .showMore(for: mediaType)
-        case .tap(let content):
-            self = .tap(content)
-        case .tapFavorite(let isFavorited, let contentId):
-            self = .tapFavorite(isFavorited: isFavorited, id: contentId)
-        case .tapPlay(let content):
-            self = .tapPlay(content)
+        case let .showMore(type):
+            self = .showMore(for: type)
+        case .feedItem(let id, let action):
+            self = .feedList(.feedItem(id: id, action: action))
         }
     }
 }
@@ -108,14 +87,19 @@ public struct MediaListView_Previews: PreviewProvider {
             MediaListView(
                 store: .init(
                     initialState: .init(
-                        feedContents: [
-                            .blogMock(),
-                            .blogMock(),
-                            .videoMock(),
-                            .videoMock(),
-                            .podcastMock(),
-                            .podcastMock()
-                        ]
+                        listState: .init(
+                            feedItemStates: .init(
+                                uniqueElements: [
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .blogMock()),
+                                    .init(feedContent: .videoMock()),
+                                    .init(feedContent: .videoMock()),
+                                    .init(feedContent: .podcastMock()),
+                                    .init(feedContent: .podcastMock()),
+                                ],
+                                id: \.id
+                            )
+                        )
                     ),
                     reducer: .empty,
                     environment: {}

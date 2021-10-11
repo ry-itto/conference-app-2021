@@ -1,3 +1,4 @@
+import Component
 import Model
 import SwiftUI
 import Styleguide

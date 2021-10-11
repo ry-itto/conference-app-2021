@@ -1,36 +1,53 @@
 import Component
 import ComposableArchitecture
 import Model
+import Player
 import Repository
+import Feed
 
 public struct FavoritesState: Equatable {
-    public var feedContents: [FeedContent]
+    public var listState: FeedContentListState
 
-    public init(feedContents: [FeedContent]) {
-        self.feedContents = feedContents
+    public init(listState: FeedContentListState) {
+        self.listState = listState
     }
 }
 
 public enum FavoritesAction {
-    case tap(FeedContent)
-    case tapFavorite(isFavorited: Bool, id: String)
-    case tapPlay(FeedContent)
     case showSetting
+    case feedList(FeedContentListAction)
 }
 
 public struct FavoritesEnvironment {
-    public init() {}
-}
+    public let feedRepository: FeedRepositoryProtocol
+    public let player: PlayerProtocol
 
-public let favoritesReducer = Reducer<FavoritesState, FavoritesAction, FavoritesEnvironment> { _, action, _ in
-    switch action {
-    case .tap:
-        return .none
-    case .tapFavorite(isFavorited: let isFavorited, id: let id):
-        return .none
-    case .tapPlay:
-        return .none
-    case .showSetting:
-        return .none
+    public init(
+        feedRepository: FeedRepositoryProtocol,
+        player: PlayerProtocol
+    ) {
+        self.feedRepository = feedRepository
+        self.player = player
     }
 }
+
+public let favoritesReducer = Reducer<FavoritesState, FavoritesAction, FavoritesEnvironment>.combine(
+    feedContentListReducer.pullback(
+        state: \.listState,
+        action: /FavoritesAction.feedList,
+        environment: { environment in
+            .init(
+                feedRepository: environment.feedRepository,
+                player: environment.player
+            )
+        }
+    ),
+    .init { _, action, _ in
+        switch action {
+        case .feedList:
+            return .none
+        case .showSetting:
+            return .none
+        }
+    }
+)
